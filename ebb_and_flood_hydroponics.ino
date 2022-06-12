@@ -107,8 +107,10 @@ void loop()
   //초기 작동
   lcd.clear();
   digitalWrite(8,HIGH);//led작동
-  watering(currentTime);
-  watering_count++;
+  if(watering(currentTime)){
+    watering_count++;
+  }
+  
 
   //메인 루프
   while(1){
@@ -120,7 +122,7 @@ void loop()
     lcd_control(currentHour,watering_count,led_check);//lcd업데이트 
     bool trigger_l=lcd_trigger(currentTime,time_check_l);
     
-    if(trigger_l==true){
+    if(trigger_l){
       time_check_l=currentTime/LCDTIMING;
       lcd.clear();
       //Serial.println("lcd cleared");
@@ -128,10 +130,9 @@ void loop()
     
     bool trigger_w=watering_trigger(currentTime,time_check_w);
 
-    if(trigger_w==true){
+    if(trigger_w){
       time_check_w=currentTime/PUMPTIMING;
-      bool sensor_worked=watering(currentTime);//currentTime의 용처 : 수위조절 센서 감지 실패시 작동후 경과한 시간을 사용하여 수위를 조절, currentTime은 작동 시점의 시간
-      if(sensor_worked==true){
+      if(watering(currentTime)){
         watering_count++;
       }
     }
