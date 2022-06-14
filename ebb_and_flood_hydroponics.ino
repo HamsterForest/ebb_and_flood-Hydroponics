@@ -65,7 +65,6 @@ bool watering(unsigned int long start_time){//물주기, 수위조절 current_ti
 void setup()
 {
   lcd.begin(); //LCD 사용 시작 20x4 lcd임
-  lcd.clear();
   delay(3000);
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
@@ -105,7 +104,6 @@ void loop()
   bool led_check=true;//led의 점등,소등여부
   unsigned int long currentTime=millis();
   //초기 작동
-  lcd.clear();
   digitalWrite(8,HIGH);//led작동
   if(watering(currentTime)){
     watering_count++;
@@ -124,7 +122,7 @@ void loop()
     
     if(trigger_l){
       time_check_l=currentTime/LCDTIMING;
-      lcd.clear();
+      lcd.begin();
       //Serial.println("lcd cleared");
     }
     
