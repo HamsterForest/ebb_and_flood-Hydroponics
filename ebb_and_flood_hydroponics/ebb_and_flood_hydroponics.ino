@@ -78,30 +78,6 @@ void setup()
   wdt_enable(WDTO_8S);
 }
 
-bool watering_trigger(unsigned int long currentTime, int time_check_w){//30분단위의 타이머-30분 마다 트리거 하며 트리거의 여부를 반환
-  int current_halfHour=currentTime/PUMPTIMING;//30분단위의 시간 측정-30분마다 값을 업데이트한다. 0->1->2->3 ......
-  if(current_halfHour!=time_check_w){//current_halfHour가 변화하는 경우 true반환
-    return true;
-  }
-  else{
-    return false;
-  }
-  /*time_check_w는 기계가 작동을 시작하면 0에서 시작한다. current_halfhour는 항시 시간을 30분 단위로 업데이트 한다. 
-    만약 current_halfhour가 새로운 값으로 업데이트되면 time_check_w와 값이 달라지게되고 if문을 통해 이를 알아낼 수 있다.
-    변화를 감지한 이후에 true를 반환하여 watering함수가 작동할 수 있게 한다. 또한 time_check_w는 성공적으로 30분단위 시간 변화를
-    감지후 기존의 current_halfHour와 동일한 값으로 바꾼다.(함수외부에서)*/
-}
-
-bool lcd_trigger(unsigned int long currentTime, int time_check_l){
-  int current_halfMin=currentTime/LCDTIMING;
-  if(current_halfMin!=time_check_l){
-    return true;
-  }
-  else{
-    return false;
-  }
-}
-
 bool triggerByTime(unsigned int long currentTime, int time_check, int timing){
   int current_state=currentTime/timing;
   if(current_state!=time_check){
