@@ -1,4 +1,5 @@
-#include <LiquidCrystal_I2C.h>//lcd사용 
+#include <LiquidCrystal_I2C.h>
+
 #include <avr/wdt.h>//워치독 타이머 일정 시간 동안 리셋되지 않으면 아두이노를 리셋
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
