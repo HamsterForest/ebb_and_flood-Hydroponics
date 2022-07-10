@@ -32,22 +32,26 @@ void lcd_control(double currentHour, int watering_count,bool led_check){
   }
 }
 
-bool watering(unsigned int long start_time){//물주기, 수위조절 current_time을 이용해 센서가 작동하지 않을 때를 대비함-일정시간후 펌프종료,반환값은 센서 작동여부 true=>작동
+//물주기, 수위조절 current_time을 이용해 센서가 작동하지 않을 때를 대비함-일정시간후 펌프종료,반환값은 센서 작동여부 true=>작동
+bool watering(unsigned int long start_time){
   unsigned int long limit_time=PUMPTIMER;
   unsigned int long current_time=0;
+  //lcd업데이트
   lcd.clear();
   lcd.setCursor(0,1);
   lcd.print("Watering!!!");
 
   while(1){
+    //워치독 타이머를 리셋
     wdt_reset();
+    //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
     if(digitalRead(12)==1){//수위조절센서
       digitalWrite(9,LOW);
       lcd.clear();
       return true;
     }
-
+    //센서가 작동하지 않았지만 일정 시간이 지나면 펌프 작동을 중단하고 false를 반환
     current_time=millis();//현재시간
     if((current_time-start_time)>=limit_time){//펌프작동후 경과된 시간을 limit_time과 비교
       digitalWrite(9,LOW);
@@ -63,10 +67,11 @@ bool watering(unsigned int long start_time){//물주기, 수위조절 current_ti
   }
 }
 
+//기본 셋업
 void setup()
 {
   lcd.begin(); //LCD 사용 시작 20x4 lcd임
-  delay(3000);
+  delay(2000);
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
   pinMode(12, INPUT);//수위센서
@@ -97,6 +102,21 @@ bool lcd_trigger(unsigned int long currentTime, int time_check_l){
   }
 }
 
+bool triggerByTime(unsigned int long currentTime, int time_check, int timing){
+  int current_state=currentTime/timing;
+  if(current_state!=time_check){
+    return true;
+  }
+  else{
+    return false;
+  }
+  /*time_check는 기계가 작동을 시작하면 0에서 시작한다. current_state는 항시 시간을 timing에서 지정한 단위로 업데이트 한다. 
+    만약 current_state가 새로운 값으로 업데이트되면 time_check와 값이 달라지게되고 if문을 통해 이를 알아낼 수 있다.
+    변화를 감지한 이후에 true를 반환하여 의도한 어떤 함수가 작동할 수 있게 한다. 또한 time_check는 성공적으로 timing에서 지정한 시간 단위 시간 변화를
+    감지후 기존의 current_state와 동일한 값으로 바꾼다.(함수외부에서)*/
+}
+
+//메인함수
 void loop()
 {
   int watering_count=0;//24시간 주기안에서 물을 준 횟수를 카운트
@@ -115,26 +135,30 @@ void loop()
   while(1){
     wdt_reset();
     currentTime=millis();//작동후 경과한 시간을 밀리초단위로 반환
-    
-    double currentHour=floor(double(currentTime)/3600000.0*100)/100; //밀리초 단위로 반환된 시간을 시간단위로 소수점으로 나타내며 lcd에 표시하기 위함
-  
-    lcd_control(currentHour,watering_count,led_check);//lcd업데이트 
-    bool trigger_l=lcd_trigger(currentTime,time_check_l);
-    
-    if(trigger_l){
+
+    //밀리초 단위로 반환된 시간을 시간단위로 소수점으로 나타내며 lcd에 표시하기 위함
+    //millis()의 반환값은 unsigned int long이므로 double로 바꾸어 연산하여야한다.
+    double currentHour=floor(double(currentTime)/3600000.0*100)/100;
+
+
+    //lcd업데이트를 위한 함수 진입
+    //lcd표시정보 : 현재시간, 물을 준 횟수, led의 점등여부
+    lcd_control(currentHour,watering_count,led_check);
+
+    //lcd를 일정시간마다 리셋하기위해 시간을 체크하는 변수이다.(lcd에서 발생하는 오류를 방지하기 위함이다.)
+    if(triggerByTime(currentTime,time_check_l,LCDTIMING)){
       time_check_l=currentTime/LCDTIMING;
       lcd.begin();
-      //Serial.println("lcd cleared");
     }
-    
-    bool trigger_w=watering_trigger(currentTime,time_check_w);
 
-    if(trigger_w){
+    //물주기를 일정시간마다 함을 확실히 하기위함이다. 30분마다 한번은 무조건 작동하여야 한다.
+    if(triggerByTime(currentTime,time_check_w,PUMPTIMING)){
       time_check_w=currentTime/PUMPTIMING;
       if(watering(currentTime)){
         watering_count++;
       }
     }
+    
 
     if(currentTime>=57600000){//16시간이후 led 소등
       digitalWrite(8,LOW);
