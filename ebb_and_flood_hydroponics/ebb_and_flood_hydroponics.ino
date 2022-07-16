@@ -48,8 +48,6 @@ bool watering(unsigned int long start_time){
     wdt_reset();
     //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
-    BTSerial.print("수위센서의 값 : ");//블루투스통신을 통해 핸드폰으로 센서값 전송
-    BTSerial.println(analogRead(A1));
     if(analogRead(A1)>=400){//수위조절센서
       digitalWrite(9,LOW);
       lcd.clear();
@@ -82,9 +80,13 @@ void setup()
   wdt_enable(WDTO_8S);
 }
 
-bool triggerByTime(unsigned int long currentTime, int time_check, int timing){
+bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int long timing){
   int current_state=currentTime/timing;
   if(current_state!=time_check){
+    BTSerial.println(currentTime);
+    BTSerial.println(timing);
+    BTSerial.println(current_state);
+    BTSerial.println(time_check);
     return true;
   }
   else{
@@ -103,6 +105,9 @@ void loop()
   int time_check_w=0;//30분마다 물을 주는것을 보장하기위한 변수
   int time_check_l=0;//30초마다 lcd를 업데이트 하는것을 보장하기 위한 변수=>lcd오류 방지
   bool led_check=true;//led의 점등,소등여부
+
+  unsigned int long pumptiming=PUMPTIMING;//아두이노에서 int의 범위는 -32768~32767
+  unsigned int long lcdtiming=LCDTIMING;
   unsigned int long currentTime=millis();
   //초기 작동
   digitalWrite(8,HIGH);//led작동
@@ -126,14 +131,17 @@ void loop()
     lcd_control(currentHour,watering_count,led_check);
 
     //lcd를 일정시간마다 리셋하기위해 시간을 체크하는 변수이다.(lcd에서 발생하는 오류를 방지하기 위함이다.)
-    if(triggerByTime(currentTime,time_check_l,LCDTIMING)){
-      time_check_l=currentTime/LCDTIMING;
+    if(triggerByTime(currentTime,time_check_l,lcdtiming)){
+      time_check_l=currentTime/lcdtiming;
       lcd.begin();
     }
 
     //물주기를 일정시간마다 함을 확실히 하기위함이다. 30분마다 한번은 무조건 작동하여야 한다.
-    if(triggerByTime(currentTime,time_check_w,PUMPTIMING)){
-      time_check_w=currentTime/PUMPTIMING;
+    if(triggerByTime(currentTime,time_check_w,pumptiming)){
+      time_check_w=currentTime/pumptiming;
+      BTSerial.print("timecheck ");
+      BTSerial.println(time_check_w);
+      BTSerial.println("물주기함수 진입");
       if(watering(currentTime)){
         watering_count++;
       }
