@@ -1,7 +1,9 @@
-#include <LiquidCrystal_I2C.h>
+#include <LiquidCrystal_I2C.h>/LCD모니터사용
+#include <SoftwareSerial.h>//블루투스모듈사용
 
 #include <avr/wdt.h>//워치독 타이머 일정 시간 동안 리셋되지 않으면 아두이노를 리셋
 
+SoftwareSerial BTSerial(2,3);//Tx: digital 2 Rx: digital 3
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 extern volatile unsigned long timer0_millis;
 
@@ -46,7 +48,9 @@ bool watering(unsigned int long start_time){
     wdt_reset();
     //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
-    if(digitalRead(12)==1){//수위조절센서
+    BTSerial.print("수위센서의 값 : ");//블루투스통신을 통해 핸드폰으로 센서값 전송
+    BTSerial.println(analogRead(A1));
+    if(analogRead(A1)>=400){//수위조절센서
       digitalWrite(9,LOW);
       lcd.clear();
       return true;
@@ -71,10 +75,10 @@ bool watering(unsigned int long start_time){
 void setup()
 {
   lcd.begin(); //LCD 사용 시작 20x4 lcd임
-  delay(2000);
+  delay(2000);//여기서 delay를 사용하니 초기의 lcd오류가 덜남
+  BTSerial.begin(9600);
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
-  pinMode(12, INPUT);//수위센서
   wdt_enable(WDTO_8S);
 }
 
