@@ -10,6 +10,7 @@ extern volatile unsigned long timer0_millis;
 #define PUMPTIMER 120000 //110초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
 #define PUMPTIMING 1800000 //30분마다 펌프 작동=> 60*30*1000
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
+#define BTTIMING 10000//10초마다 블루투스 통신
  
 void lcd_control(double currentHour, int watering_count,bool led_check){
 
@@ -83,10 +84,6 @@ void setup()
 bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int long timing){
   int current_state=currentTime/timing;
   if(current_state!=time_check){
-    BTSerial.println(currentTime);
-    BTSerial.println(timing);
-    BTSerial.println(current_state);
-    BTSerial.println(time_check);
     return true;
   }
   else{
@@ -104,17 +101,19 @@ void loop()
   int watering_count=0;//24시간 주기안에서 물을 준 횟수를 카운트
   int time_check_w=0;//30분마다 물을 주는것을 보장하기위한 변수
   int time_check_l=0;//30초마다 lcd를 업데이트 하는것을 보장하기 위한 변수=>lcd오류 방지
+  int time_check_b=0;//10초마다 블루투스통신
   bool led_check=true;//led의 점등,소등여부
 
   unsigned int long pumptiming=PUMPTIMING;//아두이노에서 int의 범위는 -32768~32767
   unsigned int long lcdtiming=LCDTIMING;
+  unsigned int long BTtiming=BTTIMING;
+  
   unsigned int long currentTime=millis();
   //초기 작동
   digitalWrite(8,HIGH);//led작동
   if(watering(currentTime)){
     watering_count++;
   }
-  
 
   //메인 루프
   while(1){
@@ -124,7 +123,6 @@ void loop()
     //밀리초 단위로 반환된 시간을 시간단위로 소수점으로 나타내며 lcd에 표시하기 위함
     //millis()의 반환값은 unsigned int long이므로 double로 바꾸어 연산하여야한다.
     double currentHour=floor(double(currentTime)/3600000.0*100)/100;
-
 
     //lcd업데이트를 위한 함수 진입
     //lcd표시정보 : 현재시간, 물을 준 횟수, led의 점등여부
@@ -139,14 +137,21 @@ void loop()
     //물주기를 일정시간마다 함을 확실히 하기위함이다. 30분마다 한번은 무조건 작동하여야 한다.
     if(triggerByTime(currentTime,time_check_w,pumptiming)){
       time_check_w=currentTime/pumptiming;
-      BTSerial.print("timecheck ");
-      BTSerial.println(time_check_w);
-      BTSerial.println("물주기함수 진입");
       if(watering(currentTime)){
         watering_count++;
       }
     }
-    
+
+    //10초를 주기로하여 블루투스를 통해 스마트폰으로 정보를 전송한다.-확정된 기능이아님. 블루투스통신 확인 목적
+    if(triggerByTime(currentTime,time_check_b,BTtiming)){
+      time_check_b=currentTime/BTtiming;
+      if(BTSerial.available()){
+        BTSerial.print("watering : ");
+        BTSerial.println(watering_count);
+        BTSerial.print("WateLevelSensor : ");
+        BTSerial.println(analogRead(A1));
+      }
+    }
 
     if(currentTime>=57600000){//16시간이후 led 소등
       digitalWrite(8,LOW);
