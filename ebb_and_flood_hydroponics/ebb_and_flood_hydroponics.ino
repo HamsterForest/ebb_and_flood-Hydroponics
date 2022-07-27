@@ -12,12 +12,20 @@ extern volatile unsigned long timer0_millis;
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
  
-void lcd_control(double currentHour, int watering_count,bool led_check){
+void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_available){
 
   lcd.setCursor(0, 0);   
-  lcd.print("Aqua_culture by kkh");//19
+  lcd.print("BT connect : ");//14
+  if(bt_available){
+    lcd.setCursor(14,0);
+    lcd.print("O");
+  }
+  else{
+    lcd.setCursor(14,0);
+    lcd.print("X");
+  }
   lcd.setCursor(0, 1);
-  lcd.print("Time 0-24 : ");//14
+  lcd.print("Time 0-24 : ");//13
   lcd.setCursor(13,1);
   lcd.print(currentHour);
   lcd.setCursor(0, 2);
@@ -103,6 +111,7 @@ void loop()
   int time_check_l=0;//30초마다 lcd를 업데이트 하는것을 보장하기 위한 변수=>lcd오류 방지
   int time_check_b=0;//10초마다 블루투스통신
   bool led_check=true;//led의 점등,소등여부
+  bool bt_available=false;//블루투스 동작여부
 
   unsigned int long pumptiming=PUMPTIMING;//아두이노에서 int의 범위는 -32768~32767
   unsigned int long lcdtiming=LCDTIMING;
@@ -124,9 +133,15 @@ void loop()
     //millis()의 반환값은 unsigned int long이므로 double로 바꾸어 연산하여야한다.
     double currentHour=floor(double(currentTime)/3600000.0*100)/100;
 
+    if(BTserial.available()){
+      bt_available=true;
+    }
+    else{
+      bt_available=false;
+    }
     //lcd업데이트를 위한 함수 진입
     //lcd표시정보 : 현재시간, 물을 준 횟수, led의 점등여부
-    lcd_control(currentHour,watering_count,led_check);
+    lcd_control(currentHour,watering_count,led_check,bt_available);
 
     //lcd를 일정시간마다 리셋하기위해 시간을 체크하는 변수이다.(lcd에서 발생하는 오류를 방지하기 위함이다.)
     if(triggerByTime(currentTime,time_check_l,lcdtiming)){
