@@ -1,3 +1,5 @@
+#include <DHT.h>//온습도센서
+#include <DHT_U.h>//온습도센서
 #include <LiquidCrystal_I2C.h>/LCD모니터사용
 #include <SoftwareSerial.h>//블루투스모듈사용
 
@@ -86,6 +88,8 @@ void setup()
   BTSerial.begin(9600);
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
+  DHT dht(A5, DHT11);
+  dht.begin();//온습도센서
   wdt_enable(WDTO_8S);
 }
 
@@ -112,6 +116,8 @@ void loop()
   int time_check_b=0;//10초마다 블루투스통신
   bool led_check=true;//led의 점등,소등여부
   bool bt_available=false;//블루투스 동작여부
+  float temp=0;//온도
+  float hum=0;//습도
 
   unsigned int long pumptiming=PUMPTIMING;//아두이노에서 int의 범위는 -32768~32767
   unsigned int long lcdtiming=LCDTIMING;
@@ -128,7 +134,8 @@ void loop()
   while(1){
     wdt_reset();
     currentTime=millis();//작동후 경과한 시간을 밀리초단위로 반환
-
+    temp=dht.readTemperature();
+    hum=dht.readHumidity();
     //밀리초 단위로 반환된 시간을 시간단위로 소수점으로 나타내며 lcd에 표시하기 위함
     //millis()의 반환값은 unsigned int long이므로 double로 바꾸어 연산하여야한다.
     double currentHour=floor(double(currentTime)/3600000.0*100)/100;
