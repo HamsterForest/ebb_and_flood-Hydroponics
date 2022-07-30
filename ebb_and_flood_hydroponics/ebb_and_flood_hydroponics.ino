@@ -1,5 +1,4 @@
-#include <DHT.h>//온습도센서
-#include <DHT_U.h>//온습도센서
+#include "DHT.h"//온습도센서
 #include <LiquidCrystal_I2C.h>/LCD모니터사용
 #include <SoftwareSerial.h>//블루투스모듈사용
 
@@ -7,6 +6,7 @@
 
 SoftwareSerial BTSerial(2,3);//Tx: digital 2 Rx: digital 3
 LiquidCrystal_I2C lcd(0x27, 20, 4);
+DHT dht(4, DHT11);
 extern volatile unsigned long timer0_millis;
 
 #define PUMPTIMER 120000 //110초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
@@ -14,7 +14,7 @@ extern volatile unsigned long timer0_millis;
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
  
-void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_available){
+void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_available, int temp,int hum){
 
   lcd.setCursor(0, 0);   
   lcd.print("BT connect : ");//14
@@ -31,18 +31,28 @@ void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_a
   lcd.setCursor(13,1);
   lcd.print(currentHour);
   lcd.setCursor(0, 2);
-  lcd.print("Watered: ");//9
-  lcd.setCursor(9, 2);
-  lcd.print(watering_count);
+  lcd.print("temp: ");//9
+  lcd.setCursor(6, 2);
+  lcd.print(temp);
+  lcd.setCursor(8, 2);
+  lcd.print("c hum: ");
+  lcd.setCursor(14,2);
+  lcd.print(hum);
+  lcd.setCursor(16,2);
+  lcd.print("%");
   lcd.setCursor(0, 3);
-  lcd.print("Led state: ");//11
-  lcd.setCursor(11, 3);
+  lcd.print("Led: ");
+  lcd.setCursor(5, 3);
   if(led_check==false){
-    lcd.print("light OUT");
+    lcd.print("X");
   }
   else{
-    lcd.print("light ON");
+    lcd.print("O");
   }
+  lcd.setCursor(7,3);
+  lcd.print("WC: ");
+  lcd.setCursor(11,3);
+  lcd.print(watering_count);
 }
 
 //물주기, 수위조절 current_time을 이용해 센서가 작동하지 않을 때를 대비함-일정시간후 펌프종료,반환값은 센서 작동여부 true=>작동
@@ -88,7 +98,6 @@ void setup()
   BTSerial.begin(9600);
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
-  DHT dht(A5, DHT11);
   dht.begin();//온습도센서
   wdt_enable(WDTO_8S);
 }
@@ -140,7 +149,7 @@ void loop()
     //millis()의 반환값은 unsigned int long이므로 double로 바꾸어 연산하여야한다.
     double currentHour=floor(double(currentTime)/3600000.0*100)/100;
 
-    if(BTserial.available()){
+    if(BTSerial.available()){
       bt_available=true;
     }
     else{
@@ -148,7 +157,7 @@ void loop()
     }
     //lcd업데이트를 위한 함수 진입
     //lcd표시정보 : 현재시간, 물을 준 횟수, led의 점등여부
-    lcd_control(currentHour,watering_count,led_check,bt_available);
+    lcd_control(currentHour,watering_count,led_check,bt_available,temp,hum);
 
     //lcd를 일정시간마다 리셋하기위해 시간을 체크하는 변수이다.(lcd에서 발생하는 오류를 방지하기 위함이다.)
     if(triggerByTime(currentTime,time_check_l,lcdtiming)){
@@ -170,8 +179,10 @@ void loop()
       if(BTSerial.available()){
         BTSerial.print("watering : ");
         BTSerial.println(watering_count);
-        BTSerial.print("WateLevelSensor : ");
-        BTSerial.println(analogRead(A1));
+        BTSerial.print("temp : ");
+        BTSerial.println(temp);
+        BTSerial.print("humid : ");
+        BTSerial.println(hum);
       }
     }
 
