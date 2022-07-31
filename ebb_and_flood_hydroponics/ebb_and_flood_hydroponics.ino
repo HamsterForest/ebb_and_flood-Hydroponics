@@ -2,8 +2,6 @@
 #include <LiquidCrystal_I2C.h>/LCD모니터사용
 #include <SoftwareSerial.h>//블루투스모듈사용
 
-#include <avr/wdt.h>//워치독 타이머 일정 시간 동안 리셋되지 않으면 아두이노를 리셋
-
 SoftwareSerial BTSerial(2,3);//Tx: digital 2 Rx: digital 3
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(4, DHT11);
@@ -63,8 +61,6 @@ bool watering(unsigned int long start_time){
   lcd.clear();
 
   while(1){
-    //워치독 타이머를 리셋
-    wdt_reset();
     //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
     if(analogRead(A1)>=400){//수위조절센서
@@ -79,10 +75,8 @@ bool watering(unsigned int long start_time){
       lcd.clear();
       lcd.setCursor(0,1);
       lcd.print("Sensor fail");
-      wdt_disable();//delay함수를 사용하기 위해 워치독을 비활성화
       delay(10000);
       lcd.clear();
-      wdt_enable(WDTO_8S);//워치독 다시 사용
       return false;
     }
     lcd.setCursor(0,1);
@@ -103,7 +97,6 @@ void setup()
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
   dht.begin();//온습도센서
-  wdt_enable(WDTO_8S);
 }
 
 bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int long timing){
@@ -122,8 +115,8 @@ bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int l
 
 void critical_error(){
   digitalWrite(8,LOW);
+  digitalWrite(9,LOW);
   lcd.clear();
-  wdt_disable();
   while(1){
     lcd.setCursor(0,0);
     lcd.print("sensor failed");
@@ -151,12 +144,15 @@ void loop()
   //초기 작동
   digitalWrite(8,HIGH);//led작동
   if(watering(currentTime)){
+    BTSerial.print("sensor success : initial");
+    watering_count++;
+  }
+  else{
     watering_count++;
   }
 
   //메인 루프
   while(1){
-    wdt_reset();
     currentTime=millis();//작동후 경과한 시간을 밀리초단위로 반환
     temp=dht.readTemperature();
     hum=dht.readHumidity();
