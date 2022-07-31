@@ -9,7 +9,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(4, DHT11);
 extern volatile unsigned long timer0_millis;
 
-#define PUMPTIMER 120000 //110초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
+#define PUMPTIMER 130000 //130초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
 #define PUMPTIMING 1800000 //30분마다 펌프 작동=> 60*30*1000
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
@@ -168,8 +168,10 @@ void loop()
     //물주기를 일정시간마다 함을 확실히 하기위함이다. 30분마다 한번은 무조건 작동하여야 한다.
     if(triggerByTime(currentTime,time_check_w,pumptiming)){
       time_check_w=currentTime/pumptiming;
+      watering_count++;//물주기회수의 카운팅은 센서 작동 여부에 관계없이 카운트 된다.
       if(watering(currentTime)){
-        watering_count++;
+        BTSerial.print("Sensor worked : ");
+        BTSerial.println(currentHour);//센서가 작동하면 작동완료한 시간을 블루투스로 보낸다.
       }
     }
 
