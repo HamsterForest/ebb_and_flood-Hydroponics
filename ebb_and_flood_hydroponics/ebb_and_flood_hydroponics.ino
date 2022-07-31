@@ -120,6 +120,16 @@ bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int l
     감지후 기존의 current_state와 동일한 값으로 바꾼다.(함수외부에서)*/
 }
 
+void critical_error(){
+  digitalWrite(8,LOW);
+  lcd.clear();
+  wdt_disable();
+  while(1){
+    lcd.setCursor(0,0);
+    lcd.print("sensor failed");
+  }
+}
+
 //메인함수
 void loop()
 {
@@ -127,6 +137,7 @@ void loop()
   int time_check_w=0;//30분마다 물을 주는것을 보장하기위한 변수
   int time_check_l=0;//30초마다 lcd를 업데이트 하는것을 보장하기 위한 변수=>lcd오류 방지
   int time_check_b=0;//10초마다 블루투스통신
+  int sensor_fail=0;
   bool led_check=true;//led의 점등,소등여부
   bool bt_available=false;//블루투스 동작여부
   float temp=0;//온도
@@ -176,6 +187,12 @@ void loop()
       if(watering(currentTime)){
         BTSerial.print("sensor success : ");
         BTSerial.println(currentHour);
+      }
+      else{
+        sensor_fail++;
+        if(sensor_fail>=3){
+          critical_error();//3번이상 센서오작동->크리티컬에러->모든 동작을 멈추고 대기
+        }
       }
     }
 
