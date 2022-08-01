@@ -5,10 +5,9 @@
 SoftwareSerial BTSerial(2,3);//Tx: digital 2 Rx: digital 3
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(4, DHT11);
-extern volatile unsigned long timer0_millis;
 
 #define PUMPTIMER 130000 //130초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
-#define PUMPTIMING 1800000 //30분마다 펌프 작동=> 60*30*1000
+#define PUMPTIMING 1800000 //30분마다 펌프 작동=> 60*5*1000
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
  
@@ -54,7 +53,6 @@ bool watering(unsigned int long start_time){
   unsigned int long current_time=0;
   //lcd업데이트
   lcd.clear();
-
   while(1){
     //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
@@ -82,7 +80,6 @@ bool watering(unsigned int long start_time){
     lcd.print((current_time-start_time)/1000);
   }
 }
-
 //기본 셋업
 void setup()
 {
@@ -141,9 +138,10 @@ void loop()
   
   unsigned int long currentTime=millis();
   //초기 작동
+  //BTSerial.println("초기작동준비");
   digitalWrite(8,HIGH);//led작동
   if(watering(currentTime)){
-    BTSerial.print("sensor success : initial");
+    BTSerial.print(F("sensor success : initial"));
     watering_count++;
   }
   else{
@@ -181,10 +179,13 @@ void loop()
       time_check_w=currentTime/pumptiming;
       watering_count++;
       if(watering(currentTime)){
-        BTSerial.print("sensor success : ");
+        //BTSerial.println("물주기함수이후 참");
+        BTSerial.print(F("sensor success : "));
         BTSerial.println(currentHour);
       }
       else{
+        //BTSerial.println("물주기함수이후 거짓");
+        BTSerial.println(sensor_fail);
         sensor_fail++;
         if(sensor_fail>=3){
           critical_error();//3번이상 센서오작동->크리티컬에러->모든 동작을 멈추고 대기
@@ -196,11 +197,11 @@ void loop()
     if(triggerByTime(currentTime,time_check_b,BTtiming)){
       time_check_b=currentTime/BTtiming;
       if(BTSerial.available()){
-        BTSerial.print("watering : ");
+        BTSerial.print(F("watering : "));
         BTSerial.println(watering_count);
-        BTSerial.print("temp : ");
+        BTSerial.print(F("temp : "));
         BTSerial.println(temp);
-        BTSerial.print("humid : ");
+        BTSerial.print(F("humid : "));
         BTSerial.println(hum);
       }
     }
