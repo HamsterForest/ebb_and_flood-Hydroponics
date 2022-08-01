@@ -12,7 +12,7 @@ extern volatile unsigned long timer0_millis;
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
  
-void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_available, int temp,int hum){
+void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_available, int temp,int hum,int sensor_fail){
 
   lcd.setCursor(0, 0);   
   lcd.print("BT connect : ");//14
@@ -39,17 +39,12 @@ void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_a
   lcd.setCursor(16,2);
   lcd.print("%");
   lcd.setCursor(0, 3);
-  lcd.print("Led: ");
-  lcd.setCursor(5, 3);
-  if(led_check==false){
-    lcd.print("X");
-  }
-  else{
-    lcd.print("O");
-  }
-  lcd.setCursor(7,3);
+  lcd.print("fail: ");
+  lcd.setCursor(6,3);
+  lcd.print(sensor_fail);
+  lcd.setCursor(8,3);
   lcd.print("WC: ");
-  lcd.setCursor(11,3);
+  lcd.setCursor(12,3);
   lcd.print(watering_count);
 }
 
@@ -117,9 +112,13 @@ void critical_error(){
   digitalWrite(8,LOW);
   digitalWrite(9,LOW);
   lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("critical error");
   while(1){
+    lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print("sensor failed");
+    lcd.print("critical error");
+    delay(1000);
   }
 }
 
@@ -149,6 +148,7 @@ void loop()
   }
   else{
     watering_count++;
+    sensor_fail++;
   }
 
   //메인 루프
@@ -168,7 +168,7 @@ void loop()
     }
     //lcd업데이트를 위한 함수 진입
     //lcd표시정보 : 현재시간, 물을 준 횟수, led의 점등여부
-    lcd_control(currentHour,watering_count,led_check,bt_available,temp,hum);
+    lcd_control(currentHour,watering_count,led_check,bt_available,temp,hum,sensor_fail);
 
     //lcd를 일정시간마다 리셋하기위해 시간을 체크하는 변수이다.(lcd에서 발생하는 오류를 방지하기 위함이다.)
     if(triggerByTime(currentTime,time_check_l,lcdtiming)){
