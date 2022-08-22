@@ -1,13 +1,15 @@
 #include "DHT.h"//온습도센서
 #include <LiquidCrystal_I2C.h>/LCD모니터사용
 #include <SoftwareSerial.h>//블루투스모듈사용
+#include <avr/wdt.h>//워치독 타이머 일정 시간 동안 리셋되지 않으면 아두이노를 리셋
+
 
 SoftwareSerial BTSerial(2,3);//Tx: digital 2 Rx: digital 3
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(4, DHT11);
 
-#define PUMPTIMER 130000 //130초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
-#define PUMPTIMING 1800000 //30분마다 펌프 작동=> 60*5*1000
+#define PUMPTIMER 150000 //150초 이후 센서가 작동하지 않아도 펌프를 자동으로 종료
+#define PUMPTIMING 2400000 //40분마다 펌프 작동=> 60*5*1000
 #define LCDTIMING 30000//30초마다 LCD업데이트 -LCD오류 방지
 #define BTTIMING 10000//10초마다 블루투스 통신
  
@@ -49,14 +51,19 @@ void lcd_control(double currentHour, int watering_count,bool led_check,bool bt_a
 
 //물주기, 수위조절 current_time을 이용해 센서가 작동하지 않을 때를 대비함-일정시간후 펌프종료,반환값은 센서 작동여부 true=>작동
 bool watering(unsigned int long start_time){
+  Serial.println("물주기함수진입");
   unsigned int long limit_time=PUMPTIMER;
   unsigned int long current_time=0;
   //lcd업데이트
   lcd.clear();
   while(1){
+    wdt_reset();
     //센서가 작동하면 펌프작동을 중단하고 true를 반환
     digitalWrite(9, HIGH);//펌프작동
-    if(analogRead(A1)>=400){//수위조절센서
+    Serial.println(analogRead(A1));
+    if(analogRead(A1)>=100){//수위조절센서
+      Serial.println(analogRead(A1));
+      Serial.println("센서감지완료");
       digitalWrite(9,LOW);
       lcd.clear();
       return true;
@@ -68,8 +75,10 @@ bool watering(unsigned int long start_time){
       lcd.clear();
       lcd.setCursor(0,1);
       lcd.print("Sensor fail");
+      wdt_disable();//delay함수를 사용하기 위해 워치독을 비활성화
       delay(10000);
       lcd.clear();
+      wdt_enable(WDTO_8S);//워치독 다시 사용
       return false;
     }
     lcd.setCursor(0,1);
@@ -89,6 +98,8 @@ void setup()
   pinMode(8, OUTPUT);//led용 릴레이
   pinMode(9, OUTPUT);//펌프용 릴레이
   dht.begin();//온습도센서
+  wdt_enable(WDTO_8S);
+  Serial.begin(9600);
 }
 
 bool triggerByTime(unsigned int long currentTime, int time_check, unsigned int long timing){
@@ -111,6 +122,7 @@ void critical_error(){
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("critical error");
+  wdt_disable();
   while(1){
     lcd.clear();
     lcd.setCursor(0,0);
@@ -140,6 +152,7 @@ void loop()
   //초기 작동
   //BTSerial.println("초기작동준비");
   digitalWrite(8,HIGH);//led작동
+  Serial.println("초기작동 led");
   if(watering(currentTime)){
     BTSerial.print(F("sensor success : initial"));
     watering_count++;
@@ -148,9 +161,11 @@ void loop()
     watering_count++;
     sensor_fail++;
   }
-
+  Serial.println("초기작동 완료");
   //메인 루프
   while(1){
+    wdt_reset();
+    Serial.println(analogRead(A1));
     currentTime=millis();//작동후 경과한 시간을 밀리초단위로 반환
     temp=dht.readTemperature();
     hum=dht.readHumidity();
@@ -187,8 +202,8 @@ void loop()
         //BTSerial.println("물주기함수이후 거짓");
         BTSerial.println(sensor_fail);
         sensor_fail++;
-        if(sensor_fail>=3){
-          critical_error();//3번이상 센서오작동->크리티컬에러->모든 동작을 멈추고 대기
+        if(sensor_fail>=16){
+          critical_error();//16번이상 센서오작동(과반이상)->크리티컬에러->모든 동작을 멈추고 대기
         }
       }
     }
@@ -212,7 +227,9 @@ void loop()
    }
 
     if(currentTime>=86400000){//24시간이후 타이머 초기화
-      break;
+      while(1){//wdt를 이용해 아두이노를 리셋하는 방식 사용
+        
+      }
     }
   }//대while문
   
